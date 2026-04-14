@@ -297,21 +297,58 @@ const getLeadByIdCommand: CommandDefinition = {
   name: 'campaigns_get_lead',
   group: 'campaigns',
   subcommand: 'get-lead',
-  description: 'Get a specific lead by ID within a campaign (contact info, engagement, custom fields).',
+  description:
+    'Get a specific lead by ID within a campaign (contact info, engagement, custom fields). ' +
+    'Smartlead has no direct GET-by-lead-id endpoint, so this walks the campaign list and filters ' +
+    'client-side. For faster lookups when you know the email, use `leads get-by-email`.',
   examples: ['smartlead campaigns get-lead --campaign-id 456 --lead-id 789'],
   inputSchema: z.object({
     campaign_id: z.coerce.number().describe('Campaign ID'),
     lead_id: z.coerce.number().describe('Lead ID'),
+    max_scan: z.coerce
+      .number()
+      .optional()
+      .describe('Max leads to scan before giving up (default: 5000)'),
   }),
   cliMappings: {
     options: [
       { field: 'campaign_id', flags: '--campaign-id <id>', description: 'Campaign ID' },
       { field: 'lead_id', flags: '--lead-id <id>', description: 'Lead ID' },
+      { field: 'max_scan', flags: '--max-scan <n>', description: 'Max leads to scan (default 5000)' },
     ],
   },
-  endpoint: { method: 'GET', path: '/campaigns/{campaign_id}/leads/{lead_id}' },
-  fieldMappings: { campaign_id: 'path', lead_id: 'path' },
-  handler: (input, client) => executeCommand(getLeadByIdCommand, input, client),
+  // Endpoint metadata points at the list route we actually call under the hood.
+  endpoint: { method: 'GET', path: '/campaigns/{campaign_id}/leads' },
+  fieldMappings: { campaign_id: 'path' },
+  handler: async (input, client) => {
+    const campaignId = Number(input.campaign_id);
+    const leadId = String(input.lead_id);
+    const maxScan = Number(input.max_scan ?? 5000);
+    const pageSize = 100;
+
+    for (let offset = 0; offset < maxScan; offset += pageSize) {
+      const page = (await client.get(`/campaigns/${encodeURIComponent(campaignId)}/leads`, {
+        offset,
+        limit: pageSize,
+      })) as { data?: Array<Record<string, any>>; total_leads?: number } | Array<Record<string, any>>;
+
+      const rows = Array.isArray(page) ? page : page?.data ?? [];
+      if (rows.length === 0) break;
+
+      const match = rows.find((row) => {
+        const candidate = row?.lead?.id ?? row?.lead_id ?? row?.id;
+        return candidate !== undefined && String(candidate) === leadId;
+      });
+      if (match) return match;
+
+      if (rows.length < pageSize) break;
+    }
+
+    throw new Error(
+      `Lead ${leadId} not found in campaign ${campaignId} within the first ${maxScan} leads. ` +
+        `Increase --max-scan or look it up directly with \`smartlead leads get-by-email --email ...\`.`,
+    );
+  },
 };
 
 const getAllLeadActivitiesCommand: CommandDefinition = {
