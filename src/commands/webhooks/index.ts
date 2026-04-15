@@ -11,21 +11,23 @@ const listCommand: CommandDefinition = {
   name: 'webhooks_list',
   group: 'webhooks',
   subcommand: 'list',
-  description: 'List all webhooks in your account.',
-  examples: ['smartlead webhooks list'],
+  description:
+    'List all webhooks for a campaign. Smartlead only exposes webhooks at the campaign ' +
+    'scope — there is no global webhook list endpoint.',
+  examples: ['smartlead webhooks list --campaign-id 456'],
 
   inputSchema: z.object({
-    client_id: z.coerce.number().optional().describe('Filter by client sub-account ID'),
+    campaign_id: z.coerce.number().describe('Campaign ID'),
   }),
 
   cliMappings: {
     options: [
-      { field: 'client_id', flags: '--client-id <id>', description: 'Filter by client ID' },
+      { field: 'campaign_id', flags: '--campaign-id <id>', description: 'Campaign ID' },
     ],
   },
 
-  endpoint: { method: 'GET', path: '/webhooks' },
-  fieldMappings: { client_id: 'query' },
+  endpoint: { method: 'GET', path: '/campaigns/{campaign_id}/webhooks' },
+  fieldMappings: { campaign_id: 'path' },
 
   handler: (input, client) => executeCommand(listCommand, input, client),
 };

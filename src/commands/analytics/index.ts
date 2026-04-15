@@ -83,32 +83,9 @@ const getLeadStatsCommand: CommandDefinition = {
       { field: 'client_id', flags: '--client-id <id>', description: 'Client sub-account ID' },
     ],
   },
-  endpoint: { method: 'GET', path: '/campaigns/{campaign_id}/lead-statistics' },
+  endpoint: { method: 'GET', path: '/campaigns/{campaign_id}/leads-statistics' },
   fieldMappings: { campaign_id: 'path', client_id: 'query' },
   handler: (input, client) => executeCommand(getLeadStatsCommand, input, client),
-};
-
-const getOverviewCommand: CommandDefinition = {
-  name: 'analytics_get_overview',
-  group: 'analytics',
-  subcommand: 'overview',
-  description: 'Get global analytics overview across all campaigns.',
-  examples: ['smartlead analytics overview', 'smartlead analytics overview --client-id 123'],
-  inputSchema: z.object({
-    client_id: z.coerce.number().optional().describe('Filter by client sub-account ID'),
-    start_date: z.string().optional().describe('Start date (YYYY-MM-DD)'),
-    end_date: z.string().optional().describe('End date (YYYY-MM-DD)'),
-  }),
-  cliMappings: {
-    options: [
-      { field: 'client_id', flags: '--client-id <id>', description: 'Client sub-account ID' },
-      { field: 'start_date', flags: '--start-date <date>', description: 'Start date (YYYY-MM-DD)' },
-      { field: 'end_date', flags: '--end-date <date>', description: 'End date (YYYY-MM-DD)' },
-    ],
-  },
-  endpoint: { method: 'GET', path: '/analytics/overview' },
-  fieldMappings: { client_id: 'query', start_date: 'query', end_date: 'query' },
-  handler: (input, client) => executeCommand(getOverviewCommand, input, client),
 };
 
 // ─── Deep-dive analytics ─────────────────────────────────────────────────────
@@ -117,18 +94,22 @@ const campaignOverallStatsCommand: CommandDefinition = {
   name: 'analytics_campaign_overall_stats',
   group: 'analytics',
   subcommand: 'campaign-overall-stats',
-  description: 'Performance metrics per campaign with engagement rates across all campaigns.',
-  examples: ['smartlead analytics campaign-overall-stats', 'smartlead analytics campaign-overall-stats --client-id 123'],
+  description:
+    'Performance metrics per campaign with engagement rates across all campaigns. ' +
+    'Smartlead requires start_date and end_date on this endpoint.',
+  examples: [
+    'smartlead analytics campaign-overall-stats --start-date 2024-01-01 --end-date 2024-01-31',
+  ],
   inputSchema: z.object({
+    start_date: z.string().describe('Start date (YYYY-MM-DD)'),
+    end_date: z.string().describe('End date (YYYY-MM-DD)'),
     client_id: z.coerce.number().optional().describe('Filter by client sub-account ID'),
-    start_date: z.string().optional().describe('Start date (YYYY-MM-DD)'),
-    end_date: z.string().optional().describe('End date (YYYY-MM-DD)'),
   }),
   cliMappings: {
     options: [
-      { field: 'client_id', flags: '--client-id <id>', description: 'Client sub-account ID' },
       { field: 'start_date', flags: '--start-date <date>', description: 'Start date (YYYY-MM-DD)' },
       { field: 'end_date', flags: '--end-date <date>', description: 'End date (YYYY-MM-DD)' },
+      { field: 'client_id', flags: '--client-id <id>', description: 'Client sub-account ID' },
     ],
   },
   endpoint: { method: 'GET', path: '/analytics/campaign/overall-stats' },
@@ -326,24 +307,26 @@ const followUpReplyRateCommand: CommandDefinition = {
   name: 'analytics_follow_up_reply_rate',
   group: 'analytics',
   subcommand: 'follow-up-reply-rate',
-  description: 'Reply rates specifically for follow-up sequence steps (step 2, 3, etc.).',
-  examples: ['smartlead analytics follow-up-reply-rate --campaign-id 456'],
+  description:
+    'Account-wide reply rates for follow-up sequence steps (step 2, 3, etc.). ' +
+    'This endpoint is account-scoped — Smartlead rejects per-campaign filtering here.',
+  examples: [
+    'smartlead analytics follow-up-reply-rate --start-date 2024-01-01 --end-date 2024-01-31',
+  ],
   inputSchema: z.object({
-    campaign_id: z.coerce.number().optional().describe('Filter by campaign ID'),
     client_id: z.coerce.number().optional().describe('Filter by client sub-account ID'),
     start_date: z.string().optional().describe('Start date (YYYY-MM-DD)'),
     end_date: z.string().optional().describe('End date (YYYY-MM-DD)'),
   }),
   cliMappings: {
     options: [
-      { field: 'campaign_id', flags: '--campaign-id <id>', description: 'Filter by campaign' },
       { field: 'client_id', flags: '--client-id <id>', description: 'Client sub-account ID' },
       { field: 'start_date', flags: '--start-date <date>', description: 'Start date' },
       { field: 'end_date', flags: '--end-date <date>', description: 'End date' },
     ],
   },
   endpoint: { method: 'GET', path: '/analytics/campaign/follow-up-reply-rate' },
-  fieldMappings: { campaign_id: 'query', client_id: 'query', start_date: 'query', end_date: 'query' },
+  fieldMappings: { client_id: 'query', start_date: 'query', end_date: 'query' },
   handler: (input, client) => executeCommand(followUpReplyRateCommand, input, client),
 };
 
@@ -397,7 +380,6 @@ export const allAnalyticsCommands: CommandDefinition[] = [
   getAnalyticsCommand,
   getAnalyticsByDateCommand,
   getLeadStatsCommand,
-  getOverviewCommand,
   // Deep-dive
   campaignOverallStatsCommand,
   campaignResponseStatsCommand,

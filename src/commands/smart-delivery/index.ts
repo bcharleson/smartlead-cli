@@ -1,3 +1,12 @@
+// Smartlead's "Smart Delivery" product is hosted on a separate base host
+// (`smartdelivery.smartlead.ai`), not on `server.smartlead.ai/api/v1`.
+// Every command below was wired against phantom `/smart-delivery/*` routes
+// on the main host and returned 404 in live testing (audit: 2026-04).
+//
+// Restoring this group requires adding multi-host support to the client and
+// retargeting each command at `smartdelivery.smartlead.ai/api/v1/spam-test/*`.
+// Out of scope for a bug-fix release — group is unregistered.
+
 import { z } from 'zod';
 import type { CommandDefinition } from '../../core/types.js';
 import { executeCommand } from '../../core/handler.js';
@@ -413,25 +422,7 @@ const getComplaintRateCommand: CommandDefinition = {
   handler: (input, client) => executeCommand(getComplaintRateCommand, input, client),
 };
 
-export const allSmartDeliveryCommands: CommandDefinition[] = [
-  createSpamTestCommand,
-  getSpamTestResultsCommand,
-  listSpamTestsCommand,
-  checkDkimCommand,
-  checkSpfCommand,
-  checkDmarcCommand,
-  checkMxCommand,
-  domainHealthCheckCommand,
-  checkBlacklistCommand,
-  listBlacklistsCommand,
-  getWarmupStatusCommand,
-  getWarmupStatsCommand,
-  enableWarmupCommand,
-  disableWarmupCommand,
-  getDeliverabilityReportCommand,
-  getInboxPlacementCommand,
-  getSpamScoreCommand,
-  getAccountHealthCommand,
-  getBounceRateCommand,
-  getComplaintRateCommand,
-];
+// Unregistered: Smart Delivery lives on `smartdelivery.smartlead.ai`, not
+// on the main API host. Restoring the group requires client-level multi-host
+// support and live retesting of each route.
+export const allSmartDeliveryCommands: CommandDefinition[] = [];

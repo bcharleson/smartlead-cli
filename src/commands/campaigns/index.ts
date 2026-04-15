@@ -272,26 +272,9 @@ const manualCompleteLeadCommand: CommandDefinition = {
   handler: (input, client) => executeCommand(manualCompleteLeadCommand, input, client),
 };
 
-const getMailboxStatsCommand: CommandDefinition = {
-  name: 'campaigns_get_mailbox_stats',
-  group: 'campaigns',
-  subcommand: 'mailbox-stats',
-  description: 'Get performance breakdown by email account for a campaign.',
-  examples: ['smartlead campaigns mailbox-stats --campaign-id 456'],
-  inputSchema: z.object({
-    campaign_id: z.coerce.number().describe('Campaign ID'),
-    client_id: z.coerce.number().optional().describe('Client sub-account ID'),
-  }),
-  cliMappings: {
-    options: [
-      { field: 'campaign_id', flags: '--campaign-id <id>', description: 'Campaign ID' },
-      { field: 'client_id', flags: '--client-id <id>', description: 'Client sub-account ID' },
-    ],
-  },
-  endpoint: { method: 'GET', path: '/campaigns/{campaign_id}/mailbox-stats' },
-  fieldMappings: { campaign_id: 'path', client_id: 'query' },
-  handler: (input, client) => executeCommand(getMailboxStatsCommand, input, client),
-};
+// Removed (2026-04 audit): campaigns mailbox-stats. Smartlead has no
+// /campaigns/{id}/mailbox-stats endpoint — per-mailbox stats are only
+// exposed via Smart Delivery spam tests on a separate host.
 
 const getLeadByIdCommand: CommandDefinition = {
   name: 'campaigns_get_lead',
@@ -436,7 +419,6 @@ export const allCampaignsCommands: CommandDefinition[] = [
   sendTestEmailCommand,
   updateLeadCategoryCommand,
   manualCompleteLeadCommand,
-  getMailboxStatsCommand,
   getLeadByIdCommand,
   getAllLeadActivitiesCommand,
   createSubsequenceCommand,

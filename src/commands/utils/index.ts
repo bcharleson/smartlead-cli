@@ -133,56 +133,9 @@ const getEmailVerificationStatusCommand: CommandDefinition = {
   handler: (input, client) => executeCommand(getEmailVerificationStatusCommand, input, client),
 };
 
-const getAccountSettingsCommand: CommandDefinition = {
-  name: 'utils_get_account_settings',
-  group: 'utils',
-  subcommand: 'get-account-settings',
-  description: 'Get account-level settings and configuration.',
-  examples: ['smartlead utils get-account-settings'],
-  inputSchema: z.object({}),
-  cliMappings: { options: [] },
-  endpoint: { method: 'GET', path: '/account/settings' },
-  fieldMappings: {},
-  handler: (input, client) => executeCommand(getAccountSettingsCommand, input, client),
-};
-
-const updateAccountSettingsCommand: CommandDefinition = {
-  name: 'utils_update_account_settings',
-  group: 'utils',
-  subcommand: 'update-account-settings',
-  description: 'Update account-level settings.',
-  examples: ['smartlead utils update-account-settings --timezone "America/New_York"'],
-  inputSchema: z.object({
-    timezone: z.string().optional().describe('Account timezone (e.g., America/New_York)'),
-    daily_send_limit: z.coerce.number().optional().describe('Account-wide daily send limit'),
-    bounce_threshold: z.coerce.number().optional().describe('Auto-pause threshold for bounce rate (%)'),
-    unsubscribe_text: z.string().optional().describe('Default unsubscribe link text'),
-  }),
-  cliMappings: {
-    options: [
-      { field: 'timezone', flags: '--timezone <tz>', description: 'Account timezone' },
-      { field: 'daily_send_limit', flags: '--daily-send-limit <n>', description: 'Daily send limit' },
-      { field: 'bounce_threshold', flags: '--bounce-threshold <n>', description: 'Bounce rate threshold %' },
-      { field: 'unsubscribe_text', flags: '--unsubscribe-text <text>', description: 'Unsubscribe link text' },
-    ],
-  },
-  endpoint: { method: 'POST', path: '/account/settings' },
-  fieldMappings: { timezone: 'body', daily_send_limit: 'body', bounce_threshold: 'body', unsubscribe_text: 'body' },
-  handler: (input, client) => executeCommand(updateAccountSettingsCommand, input, client),
-};
-
-const getTeamMembersCommand: CommandDefinition = {
-  name: 'utils_get_team_members',
-  group: 'utils',
-  subcommand: 'get-team-members',
-  description: 'List all team members in the account.',
-  examples: ['smartlead utils get-team-members'],
-  inputSchema: z.object({}),
-  cliMappings: { options: [] },
-  endpoint: { method: 'GET', path: '/account/team-members' },
-  fieldMappings: {},
-  handler: (input, client) => executeCommand(getTeamMembersCommand, input, client),
-};
+// Removed (2026-04 audit): get-account-settings, update-account-settings,
+// get-team-members. Smartlead exposes no /account/* namespace — all three
+// returned 404 in live testing.
 
 export const allUtilsCommands: CommandDefinition[] = [
   verifyEmailsCommand,
@@ -190,7 +143,4 @@ export const allUtilsCommands: CommandDefinition[] = [
   getDomainBlockListCommand,
   removeDomainBlockCommand,
   getEmailVerificationStatusCommand,
-  getAccountSettingsCommand,
-  updateAccountSettingsCommand,
-  getTeamMembersCommand,
 ];

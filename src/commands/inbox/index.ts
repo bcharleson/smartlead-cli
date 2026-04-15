@@ -342,30 +342,10 @@ const listRemindersCommand: CommandDefinition = {
   handler: (input, client) => executeCommand(listRemindersCommand, input, client),
 };
 
-const listAssignedMeCommand: CommandDefinition = {
-  name: 'inbox_list_assigned_me',
-  group: 'inbox',
-  subcommand: 'list-assigned-me',
-  description: 'Get inbox emails assigned to the authenticated user.',
-  examples: ['smartlead inbox list-assigned-me'],
-  inputSchema: z.object({
-    offset: z.coerce.number().optional().describe('Pagination offset'),
-    limit: z.coerce.number().optional().describe('Results per page'),
-    campaign_id: z.coerce.number().optional().describe('Filter by campaign ID'),
-    client_id: z.coerce.number().optional().describe('Filter by client ID'),
-  }),
-  cliMappings: {
-    options: [
-      { field: 'offset', flags: '--offset <n>', description: 'Pagination offset' },
-      { field: 'limit', flags: '--limit <n>', description: 'Results per page' },
-      { field: 'campaign_id', flags: '--campaign-id <id>', description: 'Filter by campaign' },
-      { field: 'client_id', flags: '--client-id <id>', description: 'Filter by client' },
-    ],
-  },
-  endpoint: { method: 'POST', path: '/master-inbox/assigned-me' },
-  fieldMappings: { offset: 'body', limit: 'body', campaign_id: 'body', client_id: 'body' },
-  handler: (input, client) => executeCommand(listAssignedMeCommand, input, client),
-};
+// Removed (2026-04 audit): inbox list-assigned-me. Smartlead's server
+// responded with `column "undefined" does not exist` — indicates either
+// a missing server-side feature or a path that needs a user_id we can't
+// resolve client-side. Restore once Smartlead documents the endpoint.
 
 const setReminderCommand: CommandDefinition = {
   name: 'inbox_set_reminder',
@@ -594,7 +574,6 @@ export const allInboxCommands: CommandDefinition[] = [
   listSnoozedCommand,
   listImportantCommand,
   listRemindersCommand,
-  listAssignedMeCommand,
   // Actions
   updateCategoryCommand,
   changeReadStatusCommand,

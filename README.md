@@ -248,7 +248,6 @@ smartlead inbox reply \
 | `campaign-analytics` | Top-level performance metrics |
 | `campaign-analytics-by-date` | Time-series data by date range |
 | `lead-stats` | Lead funnel: interested, in progress, completed, etc. |
-| `overview` | Global analytics across all campaigns |
 
 ```bash
 smartlead analytics campaign-stats --campaign-id 456
@@ -256,14 +255,13 @@ smartlead analytics campaign-analytics-by-date \
   --campaign-id 456 \
   --start-date "2024-01-01" \
   --end-date "2024-01-31"
-smartlead analytics overview --pretty
 ```
 
 ### `webhooks`
 
 | Command | Description |
 |---------|-------------|
-| `list` | List all webhooks |
+| `list --campaign-id <id>` | List webhooks on a campaign |
 | `create` | Create a webhook |
 | `update <id>` | Update a webhook |
 | `delete <id>` | Delete a webhook |

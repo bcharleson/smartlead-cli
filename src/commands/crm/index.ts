@@ -1,3 +1,11 @@
+// Smartlead does not expose a public `/crm/*` API namespace. Every command
+// in this file was fabricated against documentation that never existed and
+// returned 404 in live testing (audit: 2026-04, see commit history).
+//
+// The command definitions are retained below as documentation of intent —
+// if Smartlead ever ships a CRM API, re-add the values to `allCrmCommands`.
+// Until then, this group is unregistered.
+
 import { z } from 'zod';
 import type { CommandDefinition } from '../../core/types.js';
 import { executeCommand } from '../../core/handler.js';
@@ -208,15 +216,8 @@ const createTagCommand: CommandDefinition = {
   handler: (input, client) => executeCommand(createTagCommand, input, client),
 };
 
-export const allCrmCommands: CommandDefinition[] = [
-  listLeadTagsCommand,
-  addLeadTagsCommand,
-  removeLeadTagCommand,
-  listLeadNotesCommand,
-  createLeadNoteCommand,
-  listLeadTasksCommand,
-  createLeadTaskCommand,
-  updateLeadTaskCommand,
-  listTagsCommand,
-  createTagCommand,
-];
+// Unregistered: Smartlead has no /crm/* API namespace.
+// Previous members: listLeadTagsCommand, addLeadTagsCommand, removeLeadTagCommand,
+// listLeadNotesCommand, createLeadNoteCommand, listLeadTasksCommand,
+// createLeadTaskCommand, updateLeadTaskCommand, listTagsCommand, createTagCommand
+export const allCrmCommands: CommandDefinition[] = [];
