@@ -3,6 +3,7 @@ import { formatError } from './errors.js';
 
 export function output(data: unknown, options: GlobalOptions = {}): void {
   if (options.quiet) return;
+  if (data === undefined || data === null) return;
 
   let result = data;
 

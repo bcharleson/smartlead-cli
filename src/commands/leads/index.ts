@@ -310,8 +310,11 @@ const exportLeadsCommand: CommandDefinition = {
   name: 'leads_export',
   group: 'leads',
   subcommand: 'export',
-  description: 'Export leads from a campaign as CSV.',
-  examples: ['smartlead leads export --campaign-id 456'],
+  description: 'Export leads from a campaign as CSV. Output is raw CSV (pipe-friendly).',
+  examples: [
+    'smartlead leads export --campaign-id 456',
+    'smartlead leads export --campaign-id 456 > leads.csv',
+  ],
   inputSchema: z.object({
     campaign_id: z.coerce.number().describe('Campaign ID'),
   }),
@@ -320,7 +323,24 @@ const exportLeadsCommand: CommandDefinition = {
   },
   endpoint: { method: 'GET', path: '/campaigns/{campaign_id}/leads-export' },
   fieldMappings: { campaign_id: 'path' },
-  handler: (input, client) => executeCommand(exportLeadsCommand, input, client),
+  handler: async (input, client) => {
+    const campaignId = Number(input.campaign_id);
+    const result = await client.get<any>(
+      `/campaigns/${encodeURIComponent(campaignId)}/leads-export`,
+    );
+    // Smartlead returns raw CSV. Our client wraps plain-text responses as
+    // {ok, message} — unwrap it and write CSV directly to stdout so the
+    // output is pipe-friendly (`> leads.csv` works).
+    const csv =
+      typeof result === 'string'
+        ? result
+        : result?.message && typeof result.message === 'string'
+          ? result.message
+          : JSON.stringify(result);
+    process.stdout.write(csv.endsWith('\n') ? csv : csv + '\n');
+    // Return undefined so output() does not double-print.
+    return undefined;
+  },
 };
 
 export const allLeadsCommands: CommandDefinition[] = [

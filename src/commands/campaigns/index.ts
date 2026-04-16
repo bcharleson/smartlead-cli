@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { CommandDefinition } from '../../core/types.js';
 import { executeCommand } from '../../core/handler.js';
+import { NotFoundError } from '../../core/errors.js';
 
 // ─── Core CRUD ───────────────────────────────────────────────────────────────
 
@@ -329,7 +330,7 @@ const getLeadByIdCommand: CommandDefinition = {
       if (rows.length < pageSize) break;
     }
 
-    throw new Error(
+    throw new NotFoundError(
       `Lead ${leadId} not found in campaign ${campaignId} within the first ${maxScan} leads. ` +
         `Increase --max-scan or look it up directly with \`smartlead leads get-by-email --email ...\`.`,
     );
