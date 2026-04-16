@@ -278,7 +278,7 @@ const addToCampaignCommand: CommandDefinition = {
   fieldMappings: {},
   handler: async (input, client) => {
     const { campaign_id, email_account_id } = input;
-    return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/email-accounts`, { email_account_id });
+    return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/email-accounts`, { email_account_ids: [email_account_id] });
   },
 };
 

@@ -73,7 +73,7 @@ The sequences JSON must be an array of step objects:
     } catch {
       throw new Error('Invalid --sequences JSON. Expected array of sequence step objects.');
     }
-    return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/sequences`, parsed);
+    return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/sequences`, { sequences: parsed });
   },
 };
 
