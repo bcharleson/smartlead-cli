@@ -12,7 +12,10 @@ import { VERSION } from './version.js';
 const BASE_URL = 'https://server.smartlead.ai/api/v1';
 const MAX_RETRIES = 3;
 const REQUEST_TIMEOUT = 30_000;
-const WRITE_TIMEOUT = 15_000;
+// Only POST requests get a shorter timeout — they're non-idempotent, so
+// retrying a hung request risks double-creating resources. DELETE, PATCH,
+// and PUT are safe to wait the full duration (and to retry on timeout).
+const POST_TIMEOUT = 15_000;
 
 interface ClientOptions {
   apiKey: string;
@@ -62,8 +65,11 @@ export class SmartleadClient implements ISmartleadClient {
     }
 
     let lastError: Error | undefined;
-    const isWrite = options.method !== 'GET';
-    const effectiveTimeout = isWrite ? Math.min(this.timeout, WRITE_TIMEOUT) : this.timeout;
+    const isPost = options.method === 'POST';
+    const effectiveTimeout = isPost ? Math.min(this.timeout, POST_TIMEOUT) : this.timeout;
+    // Safe to retry on timeout for idempotent methods (GET, DELETE, PUT, PATCH).
+    // Only POST is non-idempotent and should NOT be retried on timeout.
+    const canRetryOnTimeout = !isPost;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -155,7 +161,7 @@ export class SmartleadClient implements ISmartleadClient {
             `Request timed out after ${effectiveTimeout / 1000}s: ${options.method} ${options.path}`,
             'TIMEOUT',
           );
-          if (!isWrite && attempt < this.maxRetries) {
+          if (canRetryOnTimeout && attempt < this.maxRetries) {
             await sleep(Math.min(1000 * Math.pow(2, attempt), 10_000));
             continue;
           }
