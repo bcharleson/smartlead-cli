@@ -1,4 +1,5 @@
 import type { CommandDefinition, SmartleadClient } from './types.js';
+import { NotFoundError } from './errors.js';
 
 /**
  * Builds an HTTP request from a CommandDefinition and its input,
@@ -45,6 +46,15 @@ export async function executeCommand(
     const segments = path.split('/').filter(Boolean);
     const id = segments[segments.length - 1];
     return { status: 'deleted', id };
+  }
+
+  // GET returning an empty body means the resource doesn't exist.
+  // Smartlead returns 200 with no body for deleted/missing resources
+  // instead of a proper 404, so we catch it here.
+  if (result === undefined && cmdDef.endpoint.method === 'GET') {
+    const segments = path.split('/').filter(Boolean);
+    const id = segments[segments.length - 1];
+    throw new NotFoundError(`Resource not found: ${cmdDef.group} ${id}`);
   }
 
   return result;
