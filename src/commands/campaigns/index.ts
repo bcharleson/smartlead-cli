@@ -69,17 +69,19 @@ const updateStatusCommand: CommandDefinition = {
   name: 'campaigns_update_status',
   group: 'campaigns',
   subcommand: 'update-status',
-  description: 'Update campaign status. Valid values: ACTIVE, PAUSED, STOPPED.',
-  examples: ['smartlead campaigns update-status 456 --status ACTIVE'],
+  description:
+    'Update campaign status. Use START to activate/resume (not ACTIVE — ' +
+    'Smartlead uses START as the input value, even though the API returns ACTIVE in responses).',
+  examples: ['smartlead campaigns update-status 456 --status START'],
   inputSchema: z.object({
     campaign_id: z.coerce.number().describe('Campaign ID'),
-    status: z.enum(['ACTIVE', 'PAUSED', 'STOPPED']).describe('New campaign status'),
+    status: z.enum(['START', 'PAUSED', 'STOPPED']).describe('New campaign status: START, PAUSED, or STOPPED'),
   }),
   cliMappings: {
     args: [{ field: 'campaign_id', name: 'campaign_id', required: true }],
-    options: [{ field: 'status', flags: '--status <status>', description: 'ACTIVE, PAUSED, or STOPPED' }],
+    options: [{ field: 'status', flags: '--status <status>', description: 'START, PAUSED, or STOPPED' }],
   },
-  endpoint: { method: 'PATCH', path: '/campaigns/{campaign_id}/status' },
+  endpoint: { method: 'POST', path: '/campaigns/{campaign_id}/status' },
   fieldMappings: { campaign_id: 'path', status: 'body' },
   handler: (input, client) => executeCommand(updateStatusCommand, input, client),
 };
