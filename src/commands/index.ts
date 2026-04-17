@@ -144,6 +144,23 @@ function registerCommand(parent: Command, cmdDef: CommandDefinition): void {
       const parsed = cmdDef.inputSchema.safeParse(input);
       if (!parsed.success) {
         const issues = parsed.error.issues ?? [];
+        // Prefer the actual CLI flag from cliMappings over a derived one, so
+        // error messages match what `--help` shows (e.g. --max-leads-per-day
+        // instead of --max-new-leads-per-day).
+        const flagForField = (fieldName: string): string => {
+          const opt = cmdDef.cliMappings.options?.find((o) => o.field === fieldName);
+          if (opt) {
+            const m = opt.flags.match(/--[a-z][a-z0-9-]*/);
+            if (m) return m[0];
+          }
+          return (
+            '--' +
+            fieldName
+              .replace(/([a-z])([A-Z])/g, '$1-$2')
+              .toLowerCase()
+              .replace(/_/g, '-')
+          );
+        };
         const missing = issues
           .filter((i: any) => {
             const fieldName = String(i.path?.[0] ?? '');
@@ -151,12 +168,8 @@ function registerCommand(parent: Command, cmdDef: CommandDefinition): void {
             return fieldValue === undefined || fieldValue === null;
           })
           .map((i: any) => {
-            const flag =
-              '--' +
-              String(i.path?.[0] ?? '')
-                .replace(/([a-z])([A-Z])/g, '$1-$2')
-                .toLowerCase()
-                .replace(/_/g, '-');
+            const fieldName = String(i.path?.[0] ?? '');
+            const flag = flagForField(fieldName);
             if (i.code === 'invalid_value' && i.values) {
               return `${flag} (expected: ${i.values.join(', ')})`;
             }

@@ -29,29 +29,100 @@ const getCommand: CommandDefinition = {
   handler: (input, client) => executeCommand(getCommand, input, client),
 };
 
+/**
+ * Normalize a single sequence step into the flat shape Smartlead's
+ * `/campaigns/{id}/sequences` endpoint actually accepts.
+ *
+ * Smartlead's validator only allows these top-level keys on a step:
+ *   id, seq_number, subject, email_body, seq_delay_details, seq_variants
+ *
+ * This helper accepts three input styles so callers can round-trip from
+ * `sequences get` output or use the legacy nested-variants shape that the
+ * CLI docs historically showed:
+ *
+ *   1. Native flat shape: passes through unchanged.
+ *   2. camelCase delay (`delayInDays`): rewritten to `delay_in_days`.
+ *   3. Nested `variants` array (A/B shape from the UI / `sequences get`):
+ *      - 1 variant  → flattened onto the step (subject + email_body).
+ *      - N variants → mapped to `seq_variants` with `variant_id` and
+ *        `distribution` (evenly split unless the caller supplies one).
+ */
+function normalizeSequenceStep(raw: any): Record<string, any> {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Each sequence step must be an object.');
+  }
+
+  const out: Record<string, any> = {};
+
+  if (raw.id !== undefined) out.id = raw.id;
+  if (raw.seq_number !== undefined) out.seq_number = raw.seq_number;
+
+  const delayDetails = raw.seq_delay_details ?? {};
+  const delayInDays =
+    delayDetails.delay_in_days ?? delayDetails.delayInDays ?? raw.delay_in_days ?? raw.delayInDays ?? 0;
+  out.seq_delay_details = { delay_in_days: Number(delayInDays) };
+
+  const variants = Array.isArray(raw.variants)
+    ? raw.variants
+    : Array.isArray(raw.seq_variants)
+      ? raw.seq_variants
+      : null;
+
+  if (!variants || variants.length === 0) {
+    if (raw.subject !== undefined) out.subject = raw.subject;
+    if (raw.email_body !== undefined) out.email_body = raw.email_body;
+    return out;
+  }
+
+  if (variants.length === 1) {
+    const v = variants[0] ?? {};
+    out.subject = v.subject ?? raw.subject ?? '';
+    out.email_body = v.email_body ?? raw.email_body ?? '';
+    return out;
+  }
+
+  const evenSplit = Math.floor(100 / variants.length);
+  out.seq_variants = variants.map((v: any, idx: number) => ({
+    variant_id: v.variant_id ?? v.variant_label ?? String.fromCharCode(65 + idx),
+    subject: v.subject ?? '',
+    email_body: v.email_body ?? '',
+    distribution: Number(v.distribution ?? evenSplit),
+  }));
+
+  return out;
+}
+
 const saveCommand: CommandDefinition = {
   name: 'sequences_save',
   group: 'sequences',
   subcommand: 'save',
-  description: `Save/replace the full sequence for a campaign. This replaces ALL existing steps.
+  description: `Save/replace the full sequence for a campaign. Replaces ALL existing steps.
 
-NOTE: The save shape differs from the get shape. "sequences get" returns a flat
-Smartlead-internal format (camelCase delays, top-level subject). "sequences save"
-expects the nested variant structure shown below.
+Pause the campaign first — Smartlead refuses sequence edits while ACTIVE.
 
-The sequences JSON must be an array of step objects:
+Each step is a flat object (matches Smartlead's public API):
+[{
+  "seq_number": 1,
+  "subject": "Hello {{first_name}}",
+  "email_body": "<p>Hi {{first_name}},</p>",
+  "seq_delay_details": { "delay_in_days": 0 }
+}]
+
+For A/B testing, use seq_variants (2+ variants; distributions must sum to 100):
 [{
   "seq_number": 1,
   "seq_delay_details": { "delay_in_days": 0 },
-  "variant_distribution_type": "MANUAL_EQUAL",
-  "variants": [{
-    "subject": "Hello {{first_name}}",
-    "email_body": "<p>Hi {{first_name}},</p>",
-    "variant_label": "A"
-  }]
-}]`,
+  "seq_variants": [
+    { "variant_id": "A", "subject": "...", "email_body": "...", "distribution": 50 },
+    { "variant_id": "B", "subject": "...", "email_body": "...", "distribution": 50 }
+  ]
+}]
+
+For convenience, this command also accepts the nested shape returned by
+\`sequences get\` (camelCase delays, a \`variants\` array with \`variant_label\`)
+and normalizes it before sending.`,
   examples: [
-    'smartlead sequences save 456 --sequences \'[{"seq_number":1,"seq_delay_details":{"delay_in_days":0},"variant_distribution_type":"MANUAL_EQUAL","variants":[{"subject":"Hello","email_body":"<p>Hi</p>","variant_label":"A"}]}]\'',
+    'smartlead sequences save 456 --sequences \'[{"seq_number":1,"subject":"Hello","email_body":"<p>Hi</p>","seq_delay_details":{"delay_in_days":0}}]\'',
   ],
 
   inputSchema: z.object({
@@ -77,7 +148,12 @@ The sequences JSON must be an array of step objects:
     } catch {
       throw new Error('Invalid --sequences JSON. Expected array of sequence step objects.');
     }
-    return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/sequences`, { sequences: parsed });
+    if (!Array.isArray(parsed)) {
+      throw new Error('--sequences must be a JSON array of step objects.');
+    }
+
+    const normalized = parsed.map((step) => normalizeSequenceStep(step));
+    return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/sequences`, { sequences: normalized });
   },
 };
 
