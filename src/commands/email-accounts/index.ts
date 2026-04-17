@@ -262,8 +262,10 @@ const addToCampaignCommand: CommandDefinition = {
   name: 'email_accounts_add_to_campaign',
   group: 'email-accounts',
   subcommand: 'add-to-campaign',
-  description: 'Add an email account to a campaign.',
-  examples: ['smartlead email-accounts add-to-campaign --campaign-id 456 --account-id 789'],
+  description: 'Add an email account (sender) to a campaign. Required before starting a campaign — assigns which mailbox sends outreach for this campaign.',
+  examples: [
+    'smartlead email-accounts add-to-campaign --campaign-id 456 --account-id 789',
+  ],
   inputSchema: z.object({
     campaign_id: z.coerce.number().describe('Campaign ID'),
     email_account_id: z.coerce.number().describe('Email account ID to add'),

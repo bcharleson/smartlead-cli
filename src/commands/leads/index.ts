@@ -66,9 +66,14 @@ const addLeadsCommand: CommandDefinition = {
   subcommand: 'add-to-campaign',
   description: `Add one or more leads to a campaign.
 
-Lead object fields: email (required), first_name, last_name, company_name, phone_number, website, location, linkedin_profile, custom_fields (object)`,
+Lead object fields: email (required), first_name, last_name, company_name, phone_number, website, location, linkedin_profile, custom_fields (object).
+
+Custom/merge fields go inside a "custom_fields" object using the exact field names
+configured in Smartlead (case-sensitive). Example lead with custom fields:
+{"email":"j@acme.com","first_name":"John","custom_fields":{"job_post_title":"SRE","Primary_Sub-Industry":"Cloud"}}`,
   examples: [
     'smartlead leads add-to-campaign --campaign-id 456 --lead-list \'[{"email":"john@acme.com","first_name":"John","company_name":"Acme"}]\'',
+    'smartlead leads add-to-campaign --campaign-id 456 --lead-list \'[{"email":"j@acme.com","first_name":"John","last_name":"Smith","company_name":"Acme","custom_fields":{"Title":"CTO","location":"NYC"}}]\'',
   ],
   inputSchema: z.object({
     campaign_id: z.coerce.number().describe('Campaign ID'),

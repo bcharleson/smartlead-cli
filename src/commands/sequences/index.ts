@@ -35,6 +35,10 @@ const saveCommand: CommandDefinition = {
   subcommand: 'save',
   description: `Save/replace the full sequence for a campaign. This replaces ALL existing steps.
 
+NOTE: The save shape differs from the get shape. "sequences get" returns a flat
+Smartlead-internal format (camelCase delays, top-level subject). "sequences save"
+expects the nested variant structure shown below.
+
 The sequences JSON must be an array of step objects:
 [{
   "seq_number": 1,

@@ -49,8 +49,11 @@ const createCommand: CommandDefinition = {
   name: 'campaigns_create',
   group: 'campaigns',
   subcommand: 'create',
-  description: 'Create a new campaign. Starts in DRAFTED status.',
-  examples: ['smartlead campaigns create --name "Q1 Outreach"'],
+  description: 'Create a new campaign. Starts in DRAFTED status. Pass --client-id to assign to a sub-account (required for rep-scoped workflows).',
+  examples: [
+    'smartlead campaigns create --name "Q1 Outreach"',
+    'smartlead campaigns create --name "Q1 Outreach" --client-id 31204',
+  ],
   inputSchema: z.object({
     name: z.string().describe('Campaign name'),
     client_id: z.coerce.number().optional().describe('Client sub-account ID'),
@@ -156,6 +159,7 @@ const scheduleCommand: CommandDefinition = {
     options: [
       { field: 'timezone', flags: '--timezone <tz>', description: 'Timezone (e.g., America/New_York)' },
       { field: 'days_of_the_week', flags: '--days-of-week <json>', description: 'JSON array of days [0-6]' },
+      { field: 'days_of_the_week', flags: '--days <json>', description: 'Alias for --days-of-week' },
       { field: 'start_hour', flags: '--start-hour <time>', description: 'Start time HH:MM (24h)' },
       { field: 'end_hour', flags: '--end-hour <time>', description: 'End time HH:MM (24h)' },
       { field: 'min_time_btw_emails', flags: '--min-time-between-emails <min>', description: 'Min minutes between emails' },
