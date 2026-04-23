@@ -71,19 +71,44 @@ export class SmartleadClient implements ISmartleadClient {
     // Only POST is non-idempotent and should NOT be retried on timeout.
     const canRetryOnTimeout = !isPost;
 
+    const requestBody = options.body !== undefined ? JSON.stringify(options.body) : undefined;
+
+    // Opt-in request/response logging. Set SMARTLEAD_DEBUG=1 to trace the wire
+    // payload. Redacts the api_key so logs can be pasted into bug reports.
+    const debug = process.env.SMARTLEAD_DEBUG === '1' || process.env.SMARTLEAD_DEBUG === 'true';
+    const redactedUrl = (() => {
+      if (!debug) return '';
+      const u = new URL(url.toString());
+      if (u.searchParams.has('api_key')) u.searchParams.set('api_key', 'REDACTED');
+      return u.toString();
+    })();
+
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), effectiveTimeout);
 
+        if (debug) {
+          const body = requestBody ?? '<empty>';
+          process.stderr.write(
+            `[smartlead-cli] → ${options.method} ${redactedUrl} body=${body}\n`,
+          );
+        }
+
         const response = await fetch(url.toString(), {
           method: options.method,
           headers,
-          body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+          body: requestBody,
           signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
+
+        if (debug) {
+          process.stderr.write(
+            `[smartlead-cli] ← ${response.status} ${options.method} ${redactedUrl}\n`,
+          );
+        }
 
         if (response.ok) {
           const text = await response.text();

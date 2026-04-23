@@ -47,15 +47,18 @@ const getCommand: CommandDefinition = {
  *      - N variants → mapped to `seq_variants` with `variant_id` and
  *        `distribution` (evenly split unless the caller supplies one).
  */
-function normalizeSequenceStep(raw: any): Record<string, any> {
-  if (!raw || typeof raw !== 'object') {
+function normalizeSequenceStep(raw: any, index: number): Record<string, any> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error('Each sequence step must be an object.');
   }
 
   const out: Record<string, any> = {};
 
-  if (raw.id !== undefined) out.id = raw.id;
-  if (raw.seq_number !== undefined) out.seq_number = raw.seq_number;
+  // Smartlead's reference explicitly shows `"id": null` for new steps — omitting
+  // the key tripped the server's Joi validator in some accounts. Default to null
+  // when the caller doesn't provide one.
+  out.id = raw.id ?? null;
+  out.seq_number = raw.seq_number ?? index + 1;
 
   const delayDetails = raw.seq_delay_details ?? {};
   const delayInDays =
@@ -69,8 +72,8 @@ function normalizeSequenceStep(raw: any): Record<string, any> {
       : null;
 
   if (!variants || variants.length === 0) {
-    if (raw.subject !== undefined) out.subject = raw.subject;
-    if (raw.email_body !== undefined) out.email_body = raw.email_body;
+    out.subject = raw.subject ?? '';
+    out.email_body = raw.email_body ?? '';
     return out;
   }
 
@@ -120,7 +123,11 @@ For A/B testing, use seq_variants (2+ variants; distributions must sum to 100):
 
 For convenience, this command also accepts the nested shape returned by
 \`sequences get\` (camelCase delays, a \`variants\` array with \`variant_label\`)
-and normalizes it before sending.`,
+and normalizes it before sending.
+
+Troubleshooting: run with SMARTLEAD_DEBUG=1 to log the exact request payload
+being sent to Smartlead. Validation failures also include the outgoing body
+in the error message to make contract mismatches obvious in E2E logs.`,
   examples: [
     'smartlead sequences save 456 --sequences \'[{"seq_number":1,"subject":"Hello","email_body":"<p>Hi</p>","seq_delay_details":{"delay_in_days":0}}]\'',
   ],
@@ -149,11 +156,31 @@ and normalizes it before sending.`,
       throw new Error('Invalid --sequences JSON. Expected array of sequence step objects.');
     }
     if (!Array.isArray(parsed)) {
-      throw new Error('--sequences must be a JSON array of step objects.');
+      // The user may have already wrapped their input as { sequences: [...] }.
+      // Unwrap it rather than rejecting — makes the CLI forgiving of the shape
+      // users copy/paste from the Smartlead API docs.
+      if (parsed && typeof parsed === 'object' && Array.isArray((parsed as any).sequences)) {
+        parsed = (parsed as any).sequences;
+      } else {
+        throw new Error('--sequences must be a JSON array of step objects.');
+      }
     }
 
-    const normalized = parsed.map((step) => normalizeSequenceStep(step));
-    return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/sequences`, { sequences: normalized });
+    const normalized = parsed.map((step, idx) => normalizeSequenceStep(step, idx));
+    try {
+      return await client.post(
+        `/campaigns/${encodeURIComponent(campaign_id)}/sequences`,
+        { sequences: normalized },
+      );
+    } catch (err: any) {
+      // Surface the outgoing payload on validation failures so E2E runs can
+      // see exactly what the CLI sent to Smartlead vs. what the server rejected.
+      if (err && (err.code === 'VALIDATION_ERROR' || err.statusCode === 400 || err.statusCode === 422)) {
+        const payload = JSON.stringify({ sequences: normalized });
+        err.message = `${err.message}\n  Sent: POST /campaigns/${campaign_id}/sequences body=${payload}`;
+      }
+      throw err;
+    }
   },
 };
 
