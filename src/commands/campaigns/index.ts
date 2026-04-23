@@ -121,7 +121,7 @@ const updateSettingsCommand: CommandDefinition = {
   endpoint: { method: 'POST', path: '/campaigns/{campaign_id}/settings' },
   fieldMappings: {},
   handler: async (input, client) => {
-    const { campaign_id, track_settings, stop_lead_settings, ...rest } = input;
+    const { campaign_id, track_settings, stop_lead_settings, ai_esp_matching, ...rest } = input;
     const body: Record<string, any> = { ...rest };
     if (track_settings) {
       try { body.track_settings = JSON.parse(track_settings); }
@@ -130,6 +130,9 @@ const updateSettingsCommand: CommandDefinition = {
     if (stop_lead_settings) {
       try { body.stop_lead_settings = JSON.parse(stop_lead_settings); }
       catch { throw new Error('Invalid --stop-lead-settings JSON'); }
+    }
+    if (ai_esp_matching !== undefined) {
+      body.enable_ai_esp_matching = ai_esp_matching;
     }
     return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/settings`, body);
   },
