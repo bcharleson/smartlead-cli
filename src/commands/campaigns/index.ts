@@ -94,16 +94,31 @@ const updateSettingsCommand: CommandDefinition = {
   name: 'campaigns_update_settings',
   group: 'campaigns',
   subcommand: 'update-settings',
-  description: 'Update campaign settings: tracking, stop rules, unsubscribe text, AI ESP matching.',
-  examples: ['smartlead campaigns update-settings 456 --track-settings \'["DONT_LINK_CLICK"]\''],
+  description: 'Update campaign settings: tracking, stop rules, unsubscribe text, AI ESP matching, and AI reply categorization.',
+  examples: [
+    'smartlead campaigns update-settings 456 --track-settings \'["DONT_LINK_CLICK"]\'',
+    'smartlead campaigns update-settings 456 --force-plain-text --ai-categorisation-options \'["Interested","Not Interested"]\'',
+  ],
   inputSchema: z.object({
     campaign_id: z.coerce.number().describe('Campaign ID'),
     track_settings: z.string().optional().describe('JSON array: DONT_EMAIL_OPEN, DONT_LINK_CLICK, DONT_REPLY_TO_AN_EMAIL'),
     stop_lead_settings: z.string().optional().describe('JSON stop rules per lead behavior'),
     unsubscribe_text: z.string().optional().describe('Unsubscribe link/text in email footer'),
     send_as_plain_text: z.boolean().optional().describe('Send emails as plain text'),
+    force_plain_text: z.boolean().optional().describe('Force convert all emails to plain text'),
     follow_up_percentage: z.coerce.number().optional().describe('AI reply follow-up rate (0-100)'),
     ai_esp_matching: z.boolean().optional().describe('Enable AI ESP matching'),
+    ai_categorisation_options: z
+      .union([z.string(), z.array(z.unknown())])
+      .optional()
+      .describe('JSON array of AI reply categories'),
+    auto_pause_domain_leads_on_reply: z.boolean().optional().describe('Pause leads from the same domain after a reply'),
+    ignore_ss_mailbox_sending_limit: z.boolean().optional().describe('Ignore SmartSenders mailbox sending limit'),
+    domain_level_rate_limit: z.boolean().optional().describe('Enable domain-level rate limiting'),
+    out_of_office_detection_settings: z
+      .union([z.string(), z.record(z.string(), z.unknown())])
+      .optional()
+      .describe('JSON object for out-of-office detection settings'),
     client_id: z.coerce.number().optional().describe('Client sub-account ID'),
   }),
   cliMappings: {
@@ -113,15 +128,29 @@ const updateSettingsCommand: CommandDefinition = {
       { field: 'stop_lead_settings', flags: '--stop-lead-settings <json>', description: 'JSON stop lead rules' },
       { field: 'unsubscribe_text', flags: '--unsubscribe-text <text>', description: 'Unsubscribe text' },
       { field: 'send_as_plain_text', flags: '--send-as-plain-text', description: 'Send as plain text' },
+      { field: 'force_plain_text', flags: '--force-plain-text', description: 'Force convert all emails to plain text' },
       { field: 'follow_up_percentage', flags: '--follow-up-percentage <n>', description: 'AI follow-up rate (0-100)' },
       { field: 'ai_esp_matching', flags: '--ai-esp-matching', description: 'Enable AI ESP matching' },
+      { field: 'ai_categorisation_options', flags: '--ai-categorisation-options <json>', description: 'JSON array of AI reply categories' },
+      { field: 'auto_pause_domain_leads_on_reply', flags: '--auto-pause-domain-leads-on-reply', description: 'Pause same-domain leads after reply' },
+      { field: 'ignore_ss_mailbox_sending_limit', flags: '--ignore-ss-mailbox-sending-limit', description: 'Ignore SmartSenders mailbox sending limit' },
+      { field: 'domain_level_rate_limit', flags: '--domain-level-rate-limit', description: 'Enable domain-level rate limiting' },
+      { field: 'out_of_office_detection_settings', flags: '--out-of-office-detection-settings <json>', description: 'JSON object for out-of-office detection settings' },
       { field: 'client_id', flags: '--client-id <id>', description: 'Client sub-account ID' },
     ],
   },
   endpoint: { method: 'POST', path: '/campaigns/{campaign_id}/settings' },
   fieldMappings: {},
   handler: async (input, client) => {
-    const { campaign_id, track_settings, stop_lead_settings, ai_esp_matching, ...rest } = input;
+    const {
+      campaign_id,
+      track_settings,
+      stop_lead_settings,
+      ai_esp_matching,
+      ai_categorisation_options,
+      out_of_office_detection_settings,
+      ...rest
+    } = input;
     const body: Record<string, any> = { ...rest };
     if (track_settings) {
       try { body.track_settings = JSON.parse(track_settings); }
@@ -133,6 +162,32 @@ const updateSettingsCommand: CommandDefinition = {
     }
     if (ai_esp_matching !== undefined) {
       body.enable_ai_esp_matching = ai_esp_matching;
+    }
+    if (ai_categorisation_options !== undefined) {
+      if (typeof ai_categorisation_options === 'string') {
+        try { body.ai_categorisation_options = JSON.parse(ai_categorisation_options); }
+        catch { throw new Error('Invalid --ai-categorisation-options JSON. Expected array like: ["Interested","Not Interested"]'); }
+      } else {
+        body.ai_categorisation_options = ai_categorisation_options;
+      }
+      if (!Array.isArray(body.ai_categorisation_options)) {
+        throw new Error('Invalid --ai-categorisation-options JSON. Expected an array.');
+      }
+    }
+    if (out_of_office_detection_settings !== undefined) {
+      if (typeof out_of_office_detection_settings === 'string') {
+        try { body.out_of_office_detection_settings = JSON.parse(out_of_office_detection_settings); }
+        catch { throw new Error('Invalid --out-of-office-detection-settings JSON. Expected object.'); }
+      } else {
+        body.out_of_office_detection_settings = out_of_office_detection_settings;
+      }
+      if (
+        typeof body.out_of_office_detection_settings !== 'object' ||
+        body.out_of_office_detection_settings === null ||
+        Array.isArray(body.out_of_office_detection_settings)
+      ) {
+        throw new Error('Invalid --out-of-office-detection-settings JSON. Expected an object.');
+      }
     }
     return client.post(`/campaigns/${encodeURIComponent(campaign_id)}/settings`, body);
   },
